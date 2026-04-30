@@ -1,329 +1,470 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Holey Quest</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>15 Seconds to Death (Chaos Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* Gaya khusus untuk papan permainan */
-        #game-board.playing {
-            cursor: none; /* Menyembunyikan kursor asli saat bermain */
-        }
-        
-        .hole {
-            position: absolute;
-            background: radial-gradient(circle at 30% 30%, #444, #000 70%);
-            border-radius: 50%;
-            box-shadow: inset 0px 5px 15px rgba(0,0,0,0.9), 0px 2px 2px rgba(255,255,255,0.2);
+        :root {
+            --death-red: #ff0000;
+            --m-gold: #d4af37;
+            --m-blue: #000833;
         }
 
-        #fake-cursor {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            background-color: #ff0000;
-            border-radius: 50%;
-            pointer-events: none; /* Agar tidak memblokir event mouse */
-            z-index: 50;
-            box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
-            transform: translate(-50%, -50%); /* Center kursor di koordinat X,Y */
-            display: none; /* Sembunyikan sampai game dimulai */
-        }
-
-        .zone {
-            position: absolute;
-            width: 80px;
-            height: 80px;
+        body {
+            background: radial-gradient(circle, #1a0000 0%, #000000 100%);
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 1rem;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            z-index: 10;
+            touch-action: manipulation;
         }
 
-        #start-zone {
-            bottom: 0;
-            left: 0;
-            background: linear-gradient(135deg, #10b981, #047857);
-            border-top-right-radius: 20px;
-            box-shadow: 2px -2px 10px rgba(0,0,0,0.2);
+        h1, .timer-font { font-family: 'Orbitron', sans-serif; }
+
+        .hex-button {
+            position: absolute; 
+            background: linear-gradient(180deg, #2a0000 0%, #000000 100%);
+            border: 2px solid var(--death-red);
+            padding: 8px 16px;
             cursor: pointer;
+            transition: transform 0.1s linear, background 0.2s;
+            min-width: 140px;
+            max-width: 180px;
+            clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
+            text-align: center;
+            user-select: none;
+            z-index: 10;
+            font-size: 0.875rem;
+            word-wrap: break-word;
         }
 
-        #end-zone {
+        @media (min-width: 768px) {
+            .hex-button {
+                padding: 10px 25px;
+                min-width: 200px;
+                max-width: none;
+                font-size: 1rem;
+            }
+        }
+
+        .hex-button:hover {
+            border-color: white;
+            box-shadow: 0 0 15px var(--death-red);
+        }
+
+        .hex-button.correct { background: #00ff00 !important; color: black !important; border-color: white !important; }
+        .hex-button.wrong { background: #ff0000 !important; color: white !important; }
+
+        .question-box {
+            width: 90%;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid var(--death-red);
+            padding: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            z-index: 5;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.2);
+            pointer-events: auto;
+        }
+
+        @media (min-width: 768px) {
+            .question-box {
+                padding: 30px;
+                font-size: 1.4rem;
+            }
+        }
+
+        .timer-container {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            position: fixed;
             top: 0;
-            right: 0;
-            background: linear-gradient(135deg, #fbbf24, #d97706);
-            border-bottom-left-radius: 20px;
-            box-shadow: -2px 2px 10px rgba(0,0,0,0.2);
+            left: 0;
+            z-index: 50;
+        }
+
+        #timer-bar {
+            height: 100%;
+            background: var(--death-red);
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        .lives-display {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 1rem;
+            color: var(--death-red);
+            z-index: 40;
+        }
+
+        .score-display {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            font-size: 1rem;
+            color: var(--m-gold);
+            z-index: 40;
+        }
+
+        @media (min-width: 768px) {
+            .lives-display, .score-display {
+                font-size: 1.5rem;
+                top: 20px;
+            }
+        }
+
+        .game-over-screen {
+            position: fixed;
+            inset: 0;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+        }
+
+        .critical-time {
+            animation: shake 0.5s infinite;
+            color: red !important;
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center overflow-hidden font-sans">
+<body>
 
-    <!-- Header & Status -->
-    <div class="mb-4 text-center">
-        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">Holey Quest</h1>
-        <p id="status-text" class="text-gray-300 text-lg">Klik "Mulai" lalu arahkan kursor ke area START.</p>
+    <div id="timer-ui" class="timer-container hidden">
+        <div id="timer-bar"></div>
     </div>
 
-    <!-- Papan Permainan -->
-    <div id="game-container" class="relative w-[95vw] max-w-[800px] h-[65vh] max-h-[600px] bg-gray-300 rounded-xl border-4 border-gray-600 shadow-2xl overflow-hidden touch-none">
+    <div id="game-app" class="w-full h-full relative overflow-hidden flex flex-col items-center justify-center">
         
-        <div id="game-board" class="w-full h-full relative">
-            <div id="start-zone" class="zone">START</div>
-            <div id="end-zone" class="zone">END</div>
+        <!-- Main Menu -->
+        <div id="menu" class="text-center space-y-6 md:space-y-10 animate-pulse px-4">
+            <div>
+                <h1 class="text-4xl md:text-8xl font-black tracking-tighter text-red-600">15 SECONDS</h1>
+                <h2 class="text-xl md:text-4xl font-bold text-white italic">TO DEATH</h2>
+                <p class="text-xs md:text-sm text-gray-500 uppercase tracking-widest mt-2">Chaos Edition</p>
+            </div>
             
-            <!-- Tempat lubang-lubang akan di-generate -->
-            <div id="holes-container"></div>
-
-            <!-- Kursor palsu yang gemeteran -->
-            <div id="fake-cursor"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto pt-6">
+                <button onclick="startGame('tv')" class="hex-button relative !static w-full sm:w-64 mx-auto">TV SERIES</button>
+                <button onclick="startGame('brands')" class="hex-button relative !static w-full sm:w-64 mx-auto">BRANDS</button>
+                <button onclick="startGame('history')" class="hex-button relative !static w-full sm:w-64 mx-auto">HISTORY</button>
+                <button onclick="startGame('logic')" class="hex-button relative !static w-full sm:w-64 mx-auto text-yellow-500">LOGIKA</button>
+            </div>
         </div>
 
-        <!-- Overlay Menu (Mulai / Game Over / Win) -->
-        <div id="overlay" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-50 backdrop-blur-sm transition-opacity duration-300">
-            <h2 id="overlay-title" class="text-5xl font-bold mb-4 text-white">Holey Quest</h2>
-            <p id="overlay-desc" class="text-gray-300 mb-8 max-w-md text-center">Arahkan kursor dari START ke END. Awas! Kursor kamu sedang sakit tremor dan di jalan banyak lubang. Jangan sampai jatuh!</p>
-            <button id="btn-action" class="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-full text-xl shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-transform hover:scale-105 active:scale-95">
-                Mulai Main
-            </button>
+        <!-- Gameplay -->
+        <div id="game-ui" class="hidden w-full h-full flex flex-col items-center justify-center">
+            <div class="lives-display font-bold" id="lives-text">LIVES: 3</div>
+            <div class="score-display font-bold" id="score-text">CASH: $0</div>
+            <div id="countdown-text" class="timer-font text-4xl md:text-6xl fixed top-12 md:top-10 font-bold opacity-30">15.00</div>
+
+            <div id="question" class="question-box"></div>
+
+            <div id="chaos-arena" class="w-full h-full absolute inset-0 pointer-events-none">
+                <!-- Tombol bergerak akan muncul di sini -->
+            </div>
+        </div>
+
+        <!-- Game Over -->
+        <div id="game-over" class="hidden game-over-screen">
+            <h1 class="text-5xl md:text-7xl font-black text-red-700 mb-4 text-center">YOU DIED</h1>
+            <p id="final-score" class="text-xl md:text-3xl text-white mb-10">Total Skor: $0</p>
+            <button onclick="resetToMenu()" class="hex-button relative !static w-64">RESPAWN</button>
         </div>
     </div>
 
     <script>
-        const board = document.getElementById('game-board');
-        const holesContainer = document.getElementById('holes-container');
-        const fakeCursor = document.getElementById('fake-cursor');
-        const overlay = document.getElementById('overlay');
-        const overlayTitle = document.getElementById('overlay-title');
-        const overlayDesc = document.getElementById('overlay-desc');
-        const btnAction = document.getElementById('btn-action');
-        const statusText = document.getElementById('status-text');
-        const startZone = document.getElementById('start-zone');
+        const triviaData = {
+            tv: [
+                { q: "Siapa pemeran Wednesday Addams di Netflix?", a: ["Jenna Ortega", "Emma Myers", "Sadie Sink", "Millie Bobby"], c: 0 },
+                { q: "Apa nama pulau di 'Squid Game'?", a: ["Jeju", "Nami", "Dokdo", "Sungsan"], c: 0 },
+                { q: "Tahun berapa 'Friends' pertama kali tayang?", a: ["1990", "1994", "1996", "2000"], c: 1 },
+                { q: "Di 'The Last of Us', apa penyebab kiamat?", a: ["Virus", "Jamur", "Nuklir", "Zombie"], c: 1 },
+                { q: "Siapa identitas asli Professor di Money Heist?", a: ["Sergio Marquina", "Berlin", "Denver", "Rio"], c: 0 },
+                { q: "Siapa karakter utama 'Peaky Blinders'?", a: ["Thomas Shelby", "Arthur Shelby", "John Shelby", "Michael Gray"], c: 0 },
+                { q: "Apa nama kota di serial 'Stranger Things'?", a: ["Hawkins", "Derry", "Riverdale", "Sunnydale"], c: 0 },
+                { q: "Berapa jumlah total 'Game of Thrones' season?", a: ["6", "7", "8", "9"], c: 2 },
+                { q: "Drama Korea 'Moving' tayang di platform apa?", a: ["Netflix", "Disney+", "Viu", "Prime"], c: 1 },
+                { q: "Serial 'The Bear' fokus pada profesi apa?", a: ["Chef", "Polisi", "Dokter", "Pengacara"], c: 0 }
+            ],
+            brands: [
+                { q: "Apa nama pendiri Microsoft?", a: ["Steve Jobs", "Bill Gates", "Elon Musk", "Mark Z."], c: 1 },
+                { q: "Slogan 'Real Magic' milik brand apa?", a: ["Pepsi", "Coca Cola", "Red Bull", "Sprite"], c: 1 },
+                { q: "Logo brand apa yang menggunakan siluet burung biru (lama)?", a: ["Twitter", "Facebook", "Instagram", "Reddit"], c: 0 },
+                { q: "Louis Vuitton berasal dari negara mana?", a: ["Italia", "Prancis", "Inggris", "USA"], c: 1 },
+                { q: "Konsol game PlayStation dibuat oleh?", a: ["Nintendo", "Microsoft", "Sony", "Sega"], c: 2 },
+                { q: "Brand jam tangan mewah dengan logo mahkota?", a: ["Omega", "Rolex", "Patek", "Cartier"], c: 1 },
+                { q: "Mobil listrik Tesla didirikan oleh?", a: ["Elon Musk", "Jeff Bezos", "Larry Page", "Tim Cook"], c: 0 },
+                { q: "Aplikasi video pendek dari ByteDance?", a: ["SnackVideo", "TikTok", "Reels", "YouTube"], c: 1 },
+                { q: "Brand olahraga dengan logo 3 garis?", a: ["Nike", "Adidas", "Puma", "Reebok"], c: 1 },
+                { q: "Produsen ban yang juga memberikan rating restoran?", a: ["Bridgestone", "Michelin", "Dunlop", "Pirelli"], c: 1 }
+            ],
+            history: [
+                { q: "Siapa penemu benua Amerika?", a: ["Vasco da Gama", "C. Columbus", "Magelhaens", "Marco Polo"], c: 1 },
+                { q: "Tahun berapa Indonesia merdeka?", a: ["1944", "1945", "1946", "1950"], c: 1 },
+                { q: "Raja terkenal dari Kerajaan Majapahit?", a: ["Ken Arok", "Hayam Wuruk", "Mulawarman", "Purnawarman"], c: 1 },
+                { q: "Peristiwa 'Boston Tea Party' terjadi di negara?", a: ["Inggris", "Amerika Serikat", "Prancis", "Belanda"], c: 1 },
+                { q: "Siapa pemimpin Nazi di PD II?", a: ["Mussolini", "Hitler", "Stalin", "Churchill"], c: 1 },
+                { q: "Pyramida Giza dibangun oleh bangsa?", a: ["Maya", "Mesir Kuno", "Inca", "Yunani"], c: 1 },
+                { q: "Perang Diponegoro berakhir pada tahun?", a: ["1825", "1830", "1845", "1850"], c: 1 },
+                { q: "Siapa presiden wanita pertama di dunia?", a: ["Megawati", "S. Bandaranaike", "Indira Gandhi", "Corazon Aquino"], c: 1 },
+                { q: "Kapan Tembok Cina mulai dibangun?", a: ["Dinasti Qin", "Dinasti Han", "Dinasti Ming", "Dinasti Tang"], c: 0 },
+                { q: "Nama asli Pangeran Diponegoro?", a: ["Antasari", "Mustahar", "Ontowiryo", "Surapati"], c: 2 }
+            ],
+            logic: [
+                { q: "Ada berapa huruf 'f' dalam 'Fifteen Seconds to Death'?", a: ["0", "1", "2", "3"], c: 1 },
+                { q: "Apa yang selalu datang tapi tidak pernah tiba?", a: ["Hujan", "Besok", "Masa Lalu", "Kado"], c: 1 },
+                { q: "Semakin banyak diambil, semakin besar ia. Apakah itu?", a: ["Lubang", "Uang", "Ilmu", "Umur"], c: 0 },
+                { q: "Bulan apa yang memiliki 28 hari?", a: ["Februari", "Januari", "Semua Bulan", "Maret"], c: 2 },
+                { q: "Jika ada 3 apel dan kamu ambil 2, berapa apel kamu punya?", a: ["1", "2", "3", "0"], c: 1 },
+                { q: "Warna apa yang dihasilkan dari merah + biru?", a: ["Hijau", "Ungu", "Orange", "Cokelat"], c: 1 },
+                { q: "Ibu Budi punya 3 anak: Ali, Abi, dan...?", a: ["Budi", "Abu", "Ari", "Cici"], c: 0 },
+                { q: "Berapa banyak angka 9 dari 1 sampai 100?", a: ["10", "11", "20", "21"], c: 2 },
+                { q: "Pencet kata 'MATI' untuk selamat.", a: ["Selamat", "Mati", "Hidup", "Kabur"], c: 1 },
+                { q: "Coba klik kata 'Skor' di layar.", a: ["Klik", "Ini", "Salah", "Coba"], hidden: "Skor" }
+            ]
+        };
 
-        // State Permainan
-        let gameState = 'IDLE'; // IDLE, READY, PLAYING, GAMEOVER, WIN
-        let realX = 0;
-        let realY = 0;
-        let fakeX = 0;
-        let fakeY = 0;
-        let lastRealX = 0;
-        let lastRealY = 0;
-        let currentTremble = 0;
-        const fakeCursorRadius = 8;
-        
-        // Pengaturan Kesulitan
-        const trembleIntensity = 8; // Diturunkan dari 18 agar lebih mudah
-        const holeCount = 45; // Jumlah lubang
-        let holesData = [];
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 1500; 
+        let timerInterval;
+        let movementInterval;
+        let answerButtons = [];
+        let isGameActive = false;
 
-        // Dimensi papan (Dibuat dinamis agar responsif)
-        let boardWidth = 800;
-        let boardHeight = 600;
-        const zoneSize = 80;
+        function startGame(category) {
+            currentQuestions = [...triviaData[category]].sort(() => Math.random() - 0.5);
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('timer-ui').classList.remove('hidden');
+            isGameActive = true;
+            nextQuestion();
+        }
 
-        // Inisialisasi Event Listeners
-        btnAction.addEventListener('click', prepareGame);
-        
-        function updateCoordinates(clientX, clientY) {
-            const rect = board.getBoundingClientRect();
-            realX = clientX - rect.left;
-            realY = clientY - rect.top;
+        function resetToMenu() {
+            // Reset variables
+            score = 0;
+            lives = 3;
+            currentIndex = 0;
+            isGameActive = false;
+            
+            // Clear any active intervals
+            clearInterval(timerInterval);
+            clearInterval(movementInterval);
+            
+            // Reset UI components
+            document.getElementById('score-text').innerText = `CASH: $0`;
+            updateLivesUI();
+            document.getElementById('countdown-text').innerText = "15.00";
+            document.getElementById('countdown-text').classList.remove('critical-time');
+            document.getElementById('timer-bar').style.width = '100%';
+            document.getElementById('chaos-arena').innerHTML = '';
+            
+            // Toggle screens
+            document.getElementById('game-over').classList.add('hidden');
+            document.getElementById('game-ui').classList.add('hidden');
+            document.getElementById('timer-ui').classList.add('hidden');
+            document.getElementById('menu').classList.remove('hidden');
+        }
 
-            // Logika untuk memulai jika state READY dan masuk start zone
-            if (gameState === 'READY') {
-                if (realX >= 0 && realX <= zoneSize && realY >= boardHeight - zoneSize && realY <= boardHeight) {
-                    startGame();
+        function nextQuestion() {
+            if (currentIndex >= currentQuestions.length || lives <= 0) {
+                gameOver();
+                return;
+            }
+
+            clearInterval(timerInterval);
+            clearInterval(movementInterval);
+            document.getElementById('chaos-arena').innerHTML = '';
+            answerButtons = [];
+            
+            const qData = currentQuestions[currentIndex];
+            const qBox = document.getElementById('question');
+            
+            if (qData.hidden) {
+                qBox.innerHTML = qData.q;
+                if (qData.hidden === "Skor") {
+                    document.getElementById('score-text').innerHTML = `CASH: <span onclick="handleCorrectClick()" class="cursor-pointer text-white underline">$${score.toLocaleString()}</span>`;
                 }
-            }
-        }
-
-        // Dukungan untuk Mouse (Desktop)
-        board.addEventListener('mousemove', (e) => {
-            updateCoordinates(e.clientX, e.clientY);
-        });
-
-        // Dukungan untuk Touch (HP)
-        board.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Mencegah scrolling layar HP saat main
-            updateCoordinates(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
-
-        board.addEventListener('touchstart', (e) => {
-            if (gameState === 'READY' || gameState === 'PLAYING') {
-                e.preventDefault();
-                updateCoordinates(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: false });
-
-        // Jika mouse keluar dari papan saat bermain -> Game Over
-        board.addEventListener('mouseleave', () => {
-            if (gameState === 'PLAYING') {
-                gameOver("Kursor keluar dari arena permainan!");
-            }
-        });
-
-        // Jika jari diangkat dari layar HP saat bermain -> Game Over
-        board.addEventListener('touchend', () => {
-            if (gameState === 'PLAYING') {
-                gameOver("Jari kamu terlepas dari layar!");
-            }
-        });
-
-        function generateHoles() {
-            // Ambil ukuran layar aktual sebelum membuat lubang
-            boardWidth = board.clientWidth;
-            boardHeight = board.clientHeight;
-
-            holesContainer.innerHTML = '';
-            holesData = [];
-
-            for (let i = 0; i < holeCount; i++) {
-                // Radius lubang acak antara 15 hingga 45
-                let r = Math.random() * 30 + 15;
-                
-                // Posisi acak, pastikan tidak keluar batas
-                let x = Math.random() * (boardWidth - r * 2) + r;
-                let y = Math.random() * (boardHeight - r * 2) + r;
-
-                // Jangan taruh lubang di area Start (kiri bawah)
-                if (x < zoneSize + 40 && y > boardHeight - (zoneSize + 40)) continue;
-                // Jangan taruh lubang di area End (kanan atas)
-                if (x > boardWidth - (zoneSize + 40) && y < zoneSize + 40) continue;
-
-                holesData.push({ x, y, r });
-
-                const holeEl = document.createElement('div');
-                holeEl.className = 'hole';
-                holeEl.style.width = (r * 2) + 'px';
-                holeEl.style.height = (r * 2) + 'px';
-                holeEl.style.left = (x - r) + 'px';
-                holeEl.style.top = (y - r) + 'px';
-                holesContainer.appendChild(holeEl);
-            }
-        }
-
-        function prepareGame() {
-            gameState = 'READY';
-            overlay.classList.add('hidden');
-            fakeCursor.style.display = 'none';
-            board.classList.remove('playing');
-            statusText.innerHTML = 'Arahkan mouse kamu ke kotak <span class="text-green-500 font-bold">START</span> untuk memulai!';
-            generateHoles();
-        }
-
-        function startGame() {
-            gameState = 'PLAYING';
-            board.classList.add('playing'); // Menyembunyikan kursor asli
-            fakeCursor.style.display = 'block';
-            statusText.innerHTML = '<span class="text-red-500 font-bold animate-pulse">Hati-hati! Tremor aktif saat bergerak! Bawa ke kotak END!</span>';
-            
-            // Set posisi awal kursor palsu agar tidak loncat dari jauh
-            fakeX = realX;
-            fakeY = realY;
-            lastRealX = realX;
-            lastRealY = realY;
-            currentTremble = 0;
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        function gameLoop() {
-            if (gameState !== 'PLAYING') return;
-
-            // --- LOGIKA KURSOR GEMETERAN ---
-            // Cek apakah mouse sedang bergerak
-            let isMoving = (realX !== lastRealX || realY !== lastRealY);
-            
-            // Jika bergerak, terapkan tremor. Jika diam, tremor diredam (berhenti perlahan).
-            if (isMoving) {
-                currentTremble = trembleIntensity;
             } else {
-                currentTremble = currentTremble * 0.8; // Easing agar berhentinya mulus
-                if (currentTremble < 0.5) currentTremble = 0;
+                qBox.innerText = qData.q;
+                document.getElementById('score-text').innerText = `CASH: $${score.toLocaleString()}`;
             }
 
-            // Acak offset X dan Y berdasarkan intensitas
-            let offsetX = (Math.random() - 0.5) * 2 * currentTremble;
-            let offsetY = (Math.random() - 0.5) * 2 * currentTremble;
+            const speedFactor = window.innerWidth < 768 ? 5 : 8;
 
-            // Update posisi kursor palsu
-            fakeX = realX + offsetX;
-            fakeY = realY + offsetY;
+            qData.a.forEach((text, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'hex-button pointer-events-auto';
+                btn.innerHTML = text;
+                
+                document.getElementById('chaos-arena').appendChild(btn);
+                const rect = btn.getBoundingClientRect();
+                
+                const pos = {
+                    x: Math.random() * (window.innerWidth - rect.width),
+                    y: Math.random() * (window.innerHeight - rect.height),
+                    vx: (Math.random() - 0.5) * speedFactor,
+                    vy: (Math.random() - 0.5) * speedFactor,
+                    width: rect.width,
+                    height: rect.height
+                };
+                
+                btn.style.left = pos.x + 'px';
+                btn.style.top = pos.y + 'px';
+                
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (qData.hidden) { handleWrongClick(btn); }
+                    else if (idx === qData.c) { handleCorrectClick(btn); }
+                    else { handleWrongClick(btn); }
+                };
 
-            // Simpan posisi terakhir untuk frame berikutnya
-            lastRealX = realX;
-            lastRealY = realY;
+                answerButtons.push({ element: btn, pos: pos });
+            });
 
-            // Render ke layar
-            fakeCursor.style.left = fakeX + 'px';
-            fakeCursor.style.top = fakeY + 'px';
-
-            // --- DETEKSI TABRAKAN ---
-            checkCollisions();
-
-            // Loop terus
-            if (gameState === 'PLAYING') {
-                requestAnimationFrame(gameLoop);
-            }
+            timeLeft = 1500;
+            startTimer();
+            startMovement();
         }
 
-        function checkCollisions() {
-            // 1. Cek tabrakan dengan lubang (Lingkaran vs Lingkaran)
-            for (let hole of holesData) {
-                // Rumus jarak antara dua titik (pusat kursor palsu dan pusat lubang)
-                let dx = fakeX - hole.x;
-                let dy = fakeY - hole.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const bar = document.getElementById('timer-bar');
+                const txt = document.getElementById('countdown-text');
+                
+                bar.style.width = (timeLeft / 15) + '%';
+                txt.innerText = (timeLeft / 100).toFixed(2);
 
-                // Jika jarak < jumlah radius mereka, berarti tabrakan!
-                if (distance < (fakeCursorRadius + hole.r - 2)) { // -2 sebagai toleransi tipis
-                    gameOver("Ups! Kursor kamu jatuh ke lubang.");
-                    return;
+                if (timeLeft < 300) { 
+                    txt.classList.add('critical-time');
+                } else {
+                    txt.classList.remove('critical-time');
                 }
-            }
 
-            // 2. Cek apakah mencapai area END (Kanan Atas)
-            if (fakeX >= boardWidth - zoneSize && fakeY <= zoneSize) {
-                gameWin();
-            }
+                if (timeLeft <= 0) {
+                    handleTimeOut();
+                }
+            }, 10);
         }
 
-        function gameOver(reason) {
-            gameState = 'GAMEOVER';
-            board.classList.remove('playing'); // Kembalikan kursor asli
-            fakeCursor.style.display = 'none';
+        function startMovement() {
+            movementInterval = setInterval(() => {
+                answerButtons.forEach(b => {
+                    b.pos.x += b.pos.vx;
+                    b.pos.y += b.pos.vy;
 
-            overlayTitle.textContent = "GAME OVER";
-            overlayTitle.className = "text-5xl font-bold mb-4 text-red-500";
-            overlayDesc.textContent = reason;
-            btnAction.textContent = "Coba Lagi";
-            btnAction.className = "px-8 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-full text-xl shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-transform hover:scale-105 active:scale-95";
+                    if (b.pos.x <= 0 || b.pos.x >= window.innerWidth - b.pos.width) b.pos.vx *= -1;
+                    if (b.pos.y <= 0 || b.pos.y >= window.innerHeight - b.pos.height) b.pos.vy *= -1;
+
+                    b.pos.x = Math.max(0, Math.min(b.pos.x, window.innerWidth - b.pos.width));
+                    b.pos.y = Math.max(0, Math.min(b.pos.y, window.innerHeight - b.pos.height));
+
+                    b.element.style.left = b.pos.x + 'px';
+                    b.element.style.top = b.pos.y + 'px';
+                });
+            }, 20);
+        }
+
+        function handleCorrectClick(btn) {
+            clearInterval(timerInterval);
+            clearInterval(movementInterval);
+            if (btn) btn.classList.add('correct');
+            score += 1000 * (currentIndex + 1);
             
-            overlay.classList.remove('hidden');
-            statusText.textContent = "Yah, gagal...";
+            setTimeout(() => {
+                currentIndex++;
+                nextQuestion();
+            }, 800);
         }
 
-        function gameWin() {
-            gameState = 'WIN';
-            board.classList.remove('playing');
-            fakeCursor.style.display = 'none';
-
-            overlayTitle.textContent = "KAMU MENANG!";
-            overlayTitle.className = "text-5xl font-bold mb-4 text-yellow-400";
-            overlayDesc.textContent = "Luar biasa! Kamu berhasil menaklukkan jalur lubang meski kursornya tremor hebat!";
-            btnAction.textContent = "Main Lagi";
-            btnAction.className = "px-8 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-full text-xl shadow-[0_0_15px_rgba(22,163,74,0.5)] transition-transform hover:scale-105 active:scale-95";
+        function handleWrongClick(btn) {
+            clearInterval(timerInterval);
+            clearInterval(movementInterval);
+            if (btn) btn.classList.add('wrong');
+            lives--;
+            updateLivesUI();
             
-            overlay.classList.remove('hidden');
-            statusText.textContent = "Pemenang!";
+            setTimeout(() => {
+                if (lives <= 0) gameOver();
+                else {
+                    currentIndex++;
+                    nextQuestion();
+                }
+            }, 800);
         }
+
+        function handleTimeOut() {
+            clearInterval(timerInterval);
+            clearInterval(movementInterval);
+            lives--;
+            updateLivesUI();
+            
+            const qBox = document.getElementById('question');
+            qBox.innerHTML = "<span class='text-red-500'>WAKTU HABIS!</span>";
+
+            setTimeout(() => {
+                if (lives <= 0) gameOver();
+                else {
+                    currentIndex++;
+                    nextQuestion();
+                }
+            }, 1200);
+        }
+
+        function updateLivesUI() {
+            const lText = document.getElementById('lives-text');
+            lText.innerText = `LIVES: ${lives}`;
+            if (lives <= 1) lText.classList.add('critical-time');
+            else lText.classList.remove('critical-time');
+        }
+
+        function gameOver() {
+            isGameActive = false;
+            clearInterval(timerInterval);
+            clearInterval(movementInterval);
+            document.getElementById('game-ui').classList.add('hidden');
+            document.getElementById('timer-ui').classList.add('hidden');
+            document.getElementById('game-over').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `Total Hadiah: $${score.toLocaleString()}`;
+        }
+
+        window.onresize = () => {
+            if (isGameActive) {
+                answerButtons.forEach(b => {
+                    b.pos.x = Math.min(b.pos.x, window.innerWidth - b.pos.width);
+                    b.pos.y = Math.min(b.pos.y, window.innerHeight - b.pos.height);
+                });
+            }
+        };
     </script>
 </body>
 </html>
